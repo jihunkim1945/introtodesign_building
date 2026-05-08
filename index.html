@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Harbor House — Evolving Modular Architecture</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ==========================================================
+     STAGE: 5 layered images stacked on top of each other.
+     Active layer is visible; others are faded out.
+     ========================================================== -->
+<div class="stage" id="stage"></div>
+
+<!-- ==========================================================
+     TOP BAR — brand, year, menu icon
+     ========================================================== -->
+<header class="topbar">
+  <div class="brand">HARBOR HOUSE</div>
+  <div class="topbar__right">
+    <div class="year" id="year">2026</div>
+    <button class="menu" aria-label="Menu">
+      <span class="menu__lines"><span></span><span></span><span></span></span>
+    </button>
+  </div>
+</header>
+
+<!-- ==========================================================
+     BOTTOM SLIDER — track + draggable thumb + tick marks + labels
+     ========================================================== -->
+<div class="slider">
+  <div class="track" id="track">
+    <div class="track__fill" id="trackFill"></div>
+    <!-- ticks injected by JS -->
+    <div class="thumb" id="thumb" style="left: 0%;"></div>
+  </div>
+  <div class="labels" id="labels"></div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — replace image paths or years here
+   ------------------------------------------------------------
+   IMPORTANT: Image filenames must match exactly.
+   Currently set up to read from the `assert/` folder.
+   If you rename `2036.png` to `2035.png`, update both `year` and `src`.
+   ============================================================ */
+const STAGES = [
+  { year: 2026, src: "assert/2026.png", modules: 2,  greenery: 0 },
+  { year: 2036, src: "assert/2036.png", modules: 4,  greenery: 1 },
+  { year: 2050, src: "assert/2050.png", modules: 6,  greenery: 2 },
+  { year: 2070, src: "assert/2070.png", modules: 9,  greenery: 3 },
+  { year: 2100, src: "assert/2100.png", modules: 12, greenery: 4 }
+];
+
+let currentStage = 0;
+let isDragging = false;
+
+const stageEl  = document.getElementById('stage');
+const yearEl   = document.getElementById('year');
+const trackEl  = document.getElementById('track');
+const fillEl   = document.getElementById('trackFill');
+const thumbEl  = document.getElementById('thumb');
+const labelsEl = document.getElementById('labels');
+
+/* ============================================================
+   FALLBACK SVG — drawn if a PNG fails to load.
+   Each stage gets a slightly more complex modular building.
+   ============================================================ */
+function buildFallbackSVG(stageIdx) {
+  const s = STAGES[stageIdx];
+  const baseX = 320, baseY = 540, modW = 110, modH = 70;
+  const cols = Math.min(4, Math.ceil(Math.sqrt(s.modules) + 0.5));
+  const rows = Math.ceil(s.modules / cols);
+
+  let mods = '', placed = 0;
+  for (let r = 0; r < rows && placed < s.modules; r++) {
+    const rowMods = Math.min(cols, s.modules - placed);
+    const rowOffset = (cols - rowMods) * (modW / 2);
+    for (let c = 0; c < rowMods && placed < s.modules; c++) {
+      const x = baseX + rowOffset + c * modW + (r * 8);
+      const y = baseY - r * modH;
+      const fill = (placed % 3 === 0) ? '#c9c9c9' :
+                   (placed % 3 === 1) ? '#e3dac6' : '#aaaaaa';
+      mods += `
+        <g>
+          <rect x="${x}" y="${y}" width="${modW}" height="${modH}"
+                fill="${fill}" stroke="#7a7a7a" stroke-width="0.8"/>
+          <rect x="${x+8}" y="${y+12}" width="22" height="${modH-24}"
+                fill="#1a1a1a" opacity="0.75"/>
+        </g>`;
+      placed++;
+    }
+  }
+
+  const solarY = baseY - rows * modH - 18;
+  const solarX = baseX + 30;
+  const solar = `
+    <g transform="translate(${solarX} ${solarY}) skewX(-12)">
+      <rect x="0" y="0" width="120" height="22" fill="#1f3a6e"/>
+      <line x1="30" y1="0" x2="30" y2="22" stroke="#3a5a90" stroke-width="1"/>
+      <line x1="60" y1="0" x2="60" y2="22" stroke="#3a5a90" stroke-width="1"/>
+      <line x1="90" y1="0" x2="90" y2="22" stroke="#3a5a90" stroke-width="1"/>
+    </g>`;
+
+  let plants = '';
+  for (let g = 0; g < s.greenery; g++) {
+    const px = baseX + 20 + g * 120;
+    const py = baseY - g * modH - 6;
+    plants += `
+      <ellipse cx="${px}" cy="${py}" rx="14" ry="6" fill="#6b9a4d" opacity="0.85"/>
+      <ellipse cx="${px+4}" cy="${py-3}" rx="10" ry="5" fill="#84b563" opacity="0.85"/>`;
+  }
+
+  return `
+    <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <linearGradient id="sky${stageIdx}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"  stop-color="#a9d3ec"/>
+          <stop offset="60%" stop-color="#dbeaf3"/>
+          <stop offset="100%" stop-color="#e9eef1"/>
+        </linearGradient>
+        <linearGradient id="ground${stageIdx}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#c8c8c5"/>
+          <stop offset="100%" stop-color="#a9a9a6"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="800" fill="url(#sky${stageIdx})"/>
+      <rect y="540" width="1200" height="40" fill="#9ab9c9" opacity="0.6"/>
+      <path d="M 0 540 L 60 530 L 80 535 L 120 510 L 160 525 L 220 515 L 260 535 L 1200 535 L 1200 540 Z"
+            fill="#9aaab5" opacity="0.5"/>
+      <rect y="600" width="1200" height="200" fill="url(#ground${stageIdx})"/>
+      <ellipse cx="${baseX + 200}" cy="615" rx="280" ry="14" fill="#000" opacity="0.18"/>
+      ${mods}
+      ${solar}
+      ${plants}
+    </svg>`;
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init() {
+  // Build stage layers (preloaded image + svg fallback)
+  STAGES.forEach((stage, i) => {
+    const layer = document.createElement('div');
+    layer.className = 'stage__layer' + (i === 0 ? ' is-active' : '');
+
+    const img = document.createElement('img');
+    img.className = 'stage__image';
+    img.src = stage.src;
+    img.alt = `Harbor House in ${stage.year}`;
+    img.onerror = () => { layer.classList.add('no-image'); };
+
+    const fallback = document.createElement('div');
+    fallback.className = 'stage__fallback';
+    fallback.innerHTML = buildFallbackSVG(i);
+
+    layer.appendChild(img);
+    layer.appendChild(fallback);
+    stageEl.appendChild(layer);
+  });
+
+  // Build ticks on the track
+  STAGES.forEach((stage, i) => {
+    const tick = document.createElement('div');
+    tick.className = 'track__tick' + (i === 0 ? ' is-active' : '');
+    tick.style.left = `${(i / (STAGES.length - 1)) * 100}%`;
+    tick.dataset.index = i;
+    tick.addEventListener('click', (e) => {
+      e.stopPropagation();
+      goToStage(i);
+    });
+    trackEl.insertBefore(tick, thumbEl);
+  });
+
+  // Build year labels
+  STAGES.forEach((stage, i) => {
+    const label = document.createElement('span');
+    label.textContent = stage.year;
+    label.className = (i === 0 ? 'is-active' : '');
+    label.addEventListener('click', () => goToStage(i));
+    labelsEl.appendChild(label);
+  });
+
+  // Drag / click handlers
+  thumbEl.addEventListener('pointerdown', onDragStart);
+  trackEl.addEventListener('pointerdown', onTrackClick);
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup',   onDragEnd);
+  window.addEventListener('pointercancel', onDragEnd);
+
+  // Keyboard
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') goToStage(currentStage + 1);
+    if (e.key === 'ArrowLeft')  goToStage(currentStage - 1);
+  });
+
+  updateUI(0, false);
+}
+
+/* ============================================================
+   STAGE TRANSITION — Google-Maps-3D-style chunky → sharp
+   ============================================================ */
+function goToStage(index) {
+  index = Math.max(0, Math.min(STAGES.length - 1, index));
+  if (index === currentStage) return;
+
+  const layers = stageEl.querySelectorAll('.stage__layer');
+  const prevLayer = layers[currentStage];
+  const nextLayer = layers[index];
+
+  prevLayer.classList.remove('is-active', 'is-entering');
+  prevLayer.classList.add('is-leaving');
+
+  nextLayer.classList.remove('is-leaving', 'is-entering');
+  void nextLayer.offsetWidth; // force reflow to restart animation
+  nextLayer.classList.add('is-active', 'is-entering');
+
+  setTimeout(() => prevLayer.classList.remove('is-leaving'), 750);
+
+  currentStage = index;
+  updateUI(index, true);
+}
+
+/* ============================================================
+   UI UPDATE
+   ============================================================ */
+function updateUI(index, animateYear) {
+  const pct = (index / (STAGES.length - 1)) * 100;
+  thumbEl.style.left = `${pct}%`;
+  fillEl.style.width = `${pct}%`;
+
+  trackEl.querySelectorAll('.track__tick').forEach((tick, i) => {
+    tick.classList.toggle('is-active', i === index);
+    tick.classList.toggle('is-passed', i < index);
+  });
+
+  labelsEl.querySelectorAll('span').forEach((label, i) => {
+    label.classList.toggle('is-active', i === index);
+  });
+
+  if (animateYear) {
+    yearEl.style.opacity = '0';
+    setTimeout(() => {
+      yearEl.textContent = STAGES[index].year;
+      yearEl.style.opacity = '1';
+    }, 200);
+  } else {
+    yearEl.textContent = STAGES[index].year;
+  }
+}
+
+/* ============================================================
+   DRAG / CLICK
+   ============================================================ */
+function onDragStart(e) {
+  e.preventDefault();
+  isDragging = true;
+  thumbEl.classList.add('is-dragging');
+  thumbEl.setPointerCapture?.(e.pointerId);
+}
+
+function onDragMove(e) {
+  if (!isDragging) return;
+  const rect = trackEl.getBoundingClientRect();
+  const ratio = (e.clientX - rect.left) / rect.width;
+  const target = Math.round(ratio * (STAGES.length - 1));
+  goToStage(target);
+}
+
+function onDragEnd() {
+  if (!isDragging) return;
+  isDragging = false;
+  thumbEl.classList.remove('is-dragging');
+}
+
+function onTrackClick(e) {
+  if (e.target === thumbEl) return;
+  const rect = trackEl.getBoundingClientRect();
+  const ratio = (e.clientX - rect.left) / rect.width;
+  const target = Math.round(ratio * (STAGES.length - 1));
+  goToStage(target);
+}
+
+init();
+</script>
+</body>
+</html>
