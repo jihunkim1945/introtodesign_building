@@ -8,6 +8,7 @@
 </head>
 <body>
 
+
 <!-- ==========================================================
      STAGE: 5 layered images stacked on top of each other.
      Active layer is visible; others are faded out.
@@ -18,7 +19,7 @@
      TOP BAR — brand, year, menu icon
      ========================================================== -->
 <header class="topbar">
-  <div class="brand">Adaptive Modular System</div>
+  <div class="brand">HARBOR HOUSE</div>
   <div class="topbar__right">
     <div class="year" id="year">2026</div>
     <button class="menu" aria-label="Menu">
@@ -26,6 +27,15 @@
     </button>
   </div>
 </header>
+
+<!-- ==========================================================
+     CAPTION — small description for the active stage
+     Sits bottom-left over the building image.
+     ========================================================== -->
+<div class="caption" id="caption">
+  <div class="caption__title" id="captionTitle"></div>
+  <div class="caption__body"  id="captionBody"></div>
+</div>
 
 <!-- ==========================================================
      BOTTOM SLIDER — track + draggable thumb + tick marks + labels
@@ -48,11 +58,41 @@
    If you rename `2036.png` to `2035.png`, update both `year` and `src`.
    ============================================================ */
 const STAGES = [
-  { year: 2026, src: "assert/2026.png", modules: 2,  greenery: 0 },
-  { year: 2036, src: "assert/2036.png", modules: 4,  greenery: 1 },
-  { year: 2050, src: "assert/2050.png", modules: 6,  greenery: 2 },
-  { year: 2070, src: "assert/2070.png", modules: 9,  greenery: 3 },
-  { year: 2100, src: "assert/2100.png", modules: 12, greenery: 4 }
+  {
+    year: 2026,
+    src: "assert/2026.png",
+    title: "Prototype Stage",
+    body: "A minimal modular structure begins with essential space and basic solar support.",
+    modules: 2, greenery: 0
+  },
+  {
+    year: 2036,
+    src: "assert/2036.png",
+    title: "Early Expansion",
+    body: "New units are added to support growth, comfort, and more flexible use.",
+    modules: 4, greenery: 1
+  },
+  {
+    year: 2050,
+    src: "assert/2050.png",
+    title: "Adaptive Upgrade",
+    body: "The building expands through modular additions, shading systems, and stronger environmental response.",
+    modules: 6, greenery: 2
+  },
+  {
+    year: 2070,
+    src: "assert/2070.png",
+    title: "Integrated System",
+    body: "Architecture, greenery, and energy systems work together through long-term adaptation.",
+    modules: 9, greenery: 3
+  },
+  {
+    year: 2100,
+    src: "assert/2100.png",
+    title: "Sustainable Maturity",
+    body: "The building becomes a fully developed modular system shaped by reuse, maintenance, and responsible growth.",
+    modules: 12, greenery: 4
+  }
 ];
 
 let currentStage = 0;
@@ -64,6 +104,9 @@ const trackEl  = document.getElementById('track');
 const fillEl   = document.getElementById('trackFill');
 const thumbEl  = document.getElementById('thumb');
 const labelsEl = document.getElementById('labels');
+const captionEl      = document.getElementById('caption');
+const captionTitleEl = document.getElementById('captionTitle');
+const captionBodyEl  = document.getElementById('captionBody');
 
 /* ============================================================
    FALLBACK SVG — drawn if a PNG fails to load.
@@ -244,12 +287,18 @@ function updateUI(index, animateYear) {
 
   if (animateYear) {
     yearEl.style.opacity = '0';
+    captionEl.classList.add('is-fading');
     setTimeout(() => {
       yearEl.textContent = STAGES[index].year;
       yearEl.style.opacity = '1';
-    }, 200);
+      captionTitleEl.textContent = STAGES[index].title;
+      captionBodyEl.textContent  = STAGES[index].body;
+      captionEl.classList.remove('is-fading');
+    }, 220);
   } else {
     yearEl.textContent = STAGES[index].year;
+    captionTitleEl.textContent = STAGES[index].title;
+    captionBodyEl.textContent  = STAGES[index].body;
   }
 }
 
